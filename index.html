@@ -3,63 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Reset Your Password</title>
+  <title>Reset Password</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 24px;
+    }
+    .field {
+      margin-bottom: 15px;
+    }
+    input[type="password"], input[type="text"] {
+      width: 300px;
+      padding: 8px;
+      font-size: 16px;
+    }
+    .toggle-eye {
+      cursor: pointer;
+      margin-left: 5px;
+    }
+    .message {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-  <h2>Reset Your Password</h2>
-  <form id="reset-form">
-    <label>New Password:</label><br/>
-    <input type="password" id="newPassword" required /><br/><br/>
-    
-    <label>Confirm Password:</label><br/>
-    <input type="password" id="confirmPassword" required /><br/><br/>
-    
-    <button type="submit">Reset Password</button>
-  </form>
+  <h1>Reset Your Password</h1>
 
-  <p id="status"></p>
+  <div class="field">
+    <label for="newPassword">New Password:</label><br/>
+    <input type="password" id="newPassword"/>
+    <span class="toggle-eye" onclick="togglePassword('newPassword')">👁️</span>
+  </div>
+
+  <div class="field">
+    <label for="confirmPassword">Confirm Password:</label><br/>
+    <input type="password" id="confirmPassword"/>
+    <span class="toggle-eye" onclick="togglePassword('confirmPassword')">👁️</span>
+  </div>
+
+  <button onclick="submitReset()">Reset Password</button>
+
+  <div class="message" id="resultMessage"></div>
 
   <script>
-    // Extract email & token from URL
-    const params = new URLSearchParams(window.location.search);
-    const email = params.get("email");
-    const token = params.get("token");
+    // Extract query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const email = urlParams.get('email');
+    const token = urlParams.get('token');
 
-    const form = document.getElementById("reset-form");
-    const status = document.getElementById("status");
+    function togglePassword(id) {
+      const input = document.getElementById(id);
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
+    async function submitReset() {
       const newPassword = document.getElementById("newPassword").value;
       const confirmPassword = document.getElementById("confirmPassword").value;
+      const resultMessage = document.getElementById("resultMessage");
 
-      if (newPassword !== confirmPassword) {
-        status.textContent = "❌ Passwords do not match!";
+      if (!newPassword || !confirmPassword) {
+        resultMessage.textContent = "Please fill in both fields.";
+        resultMessage.className = "message error";
         return;
       }
 
-      const body = {
-        email,
-        token,
-        new_password: newPassword,
-        action: "reset"
-      };
+      if (newPassword !== confirmPassword) {
+        resultMessage.textContent = "Passwords do not match.";
+        resultMessage.className = "message error";
+        return;
+      }
 
       try {
         const response = await fetch("https://n8n.mq-ai.net/webhook/request-reset", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            action: "reset",
+            email,
+            token,
+            new_password: newPassword
+          })
         });
 
         const result = await response.text();
-        status.textContent = `✅ ${result}`;
+
+        if (response.ok && result.toLowerCase().includes("success")) {
+          resultMessage.textContent = "✅ Reset successful.";
+          resultMessage.className = "message success";
+        } else {
+          resultMessage.textContent = "❌ Reset failed.";
+          resultMessage.className = "message error";
+        }
       } catch (err) {
-        console.error(err);
-        status.textContent = "❌ Reset failed.";
+        resultMessage.textContent = "❌ Error: " + err.message;
+        resultMessage.className = "message error";
       }
-    });
+    }
   </script>
 </body>
 </html>
