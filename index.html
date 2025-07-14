@@ -3,44 +3,49 @@
 <head>
   <title>Reset Password</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    .hidden { display: none; }
+    body { font-family: sans-serif; padding: 2rem; max-width: 500px; margin: auto; }
+    label { display: block; margin-top: 1rem; }
+    input { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
+    button { margin-top: 1.5rem; padding: 0.75rem 1.5rem; }
+    .error { color: red; display: none; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
-  <h2 id="title">Forgot Your Password?</h2>
+  <h2>Reset Your Password</h2>
 
-  <!-- Request Reset Link Form -->
-  <form id="request-form" action="https://n8n.mq-ai.net/webhook-test/request-reset" method="POST">
-    <label for="email">Enter your email:</label><br>
-    <input type="email" name="email" id="email" required /><br><br>
-    <button type="submit">Send Reset Link</button>
-  </form>
+  <form id="resetForm" action="https://n8n.mq-ai.net/webhook/request-reset" method="POST">
+    <input type="hidden" name="email" id="email" />
+    <input type="hidden" name="token" id="token" />
 
-  <!-- Reset Password Form -->
-  <form id="reset-form" class="hidden" method="POST" action="https://n8n.mq-ai.net/webhook-test/reset-password">
-    <input type="hidden" name="email" id="reset-email" />
-    <input type="hidden" name="token" id="reset-token" />
-    <label for="new-password">Enter new password:</label><br>
-    <input type="password" name="newPassword" id="new-password" required /><br><br>
+    <label for="new_password">New Password:</label>
+    <input type="password" name="new_password" id="new_password" required />
+
+    <label for="confirm_password">Confirm Password:</label>
+    <input type="password" id="confirm_password" required />
+
+    <p class="error" id="error_msg">⚠️ Passwords do not match.</p>
+
     <button type="submit">Reset Password</button>
   </form>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get('email');
-    const token = urlParams.get('token');
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById('email').value = params.get('email') || '';
+    document.getElementById('token').value = params.get('token') || '';
 
-    if (email && token) {
-      // Show reset form
-      document.getElementById('title').textContent = 'Reset Your Password';
-      document.getElementById('request-form').classList.add('hidden');
-      document.getElementById('reset-form').classList.remove('hidden');
+    const form = document.getElementById('resetForm');
+    const newPwd = document.getElementById('new_password');
+    const confirmPwd = document.getElementById('confirm_password');
+    const errorMsg = document.getElementById('error_msg');
 
-      // Fill hidden fields
-      document.getElementById('reset-email').value = email;
-      document.getElementById('reset-token').value = token;
-    }
+    form.addEventListener('submit', function(event) {
+      if (newPwd.value !== confirmPwd.value) {
+        event.preventDefault();
+        errorMsg.style.display = 'block';
+      } else {
+        errorMsg.style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
