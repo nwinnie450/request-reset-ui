@@ -1,116 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Reset Password</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 24px;
-    }
-    .field {
-      margin-bottom: 15px;
-    }
-    input[type="password"], input[type="text"] {
-      width: 300px;
-      padding: 8px;
-      font-size: 16px;
-    }
-    .toggle-eye {
-      cursor: pointer;
-      margin-left: 5px;
-    }
-    .message {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-    .success {
-      color: green;
-    }
-    .error {
-      color: red;
-    }
+    body { font-family:sans-serif; padding:2rem; }
+    .error { color:#d33; display:none; }
+    .success { color:#070; display:none; }
   </style>
 </head>
 <body>
-  <h1>Reset Your Password</h1>
+  <h2>Reset Your Password</h2>
 
-  <div class="field">
-    <label for="newPassword">New Password:</label><br/>
-    <input type="password" id="newPassword"/>
-    <span class="toggle-eye" onclick="togglePassword('newPassword')">👁️</span>
-  </div>
+  <form id="resetForm">
+    <input type="hidden" id="email"  />
+    <input type="hidden" id="token"  />
 
-  <div class="field">
-    <label for="confirmPassword">Confirm Password:</label><br/>
-    <input type="password" id="confirmPassword"/>
-    <span class="toggle-eye" onclick="togglePassword('confirmPassword')">👁️</span>
-  </div>
+    <label>New Password<br>
+      <input type="password" id="new_password" required>
+    </label><br><br>
 
-  <button onclick="submitReset()">Reset Password</button>
+    <label>Confirm Password<br>
+      <input type="password" id="confirm_password" required>
+    </label><br><br>
 
-  <div class="message" id="resultMessage"></div>
+    <p class="error"   id="error_msg">Passwords do not match.</p>
+    <p class="success" id="ok_msg">Password updated ✓</p>
+
+    <button type="submit">Reset Password</button>
+  </form>
 
   <script>
-    // Extract query parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const email = urlParams.get('email');
-    const token = urlParams.get('token');
+    /* ------- 1.  pull token + e-mail from the reset-link --------- */
+    const qs     = new URLSearchParams(location.search);
+    const email  = qs.get('email') ?? '';
+    const token  = qs.get('token') ?? '';
 
-    function togglePassword(id) {
-      const input = document.getElementById(id);
-      input.type = input.type === 'password' ? 'text' : 'password';
-    }
+    document.getElementById('email').value = email;
+    document.getElementById('token').value = token;
 
-    async function submitReset() {
-      const newPassword = document.getElementById("newPassword").value;
-      const confirmPassword = document.getElementById("confirmPassword").value;
-      const resultMessage = document.getElementById("resultMessage");
+    /* ------- 2.  DOM helpers ------------------------------------ */
+    const form        = document.getElementById('resetForm');
+    const pwd         = document.getElementById('new_password');
+    const pwd2        = document.getElementById('confirm_password');
+    const errorMsg    = document.getElementById('error_msg');
+    const successMsg  = document.getElementById('ok_msg');
 
-      if (!newPassword || !confirmPassword) {
-        resultMessage.textContent = "Please fill in both fields.";
-        resultMessage.className = "message error";
+    /* ------- 3.  submit handler  -------------------------------- */
+    form.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      errorMsg.style.display   = 'none';
+      successMsg.style.display = 'none';
+
+      if (pwd.value !== pwd2.value) {
+        errorMsg.style.display = 'block';
         return;
       }
 
-      if (newPassword !== confirmPassword) {
-        resultMessage.textContent = "Passwords do not match.";
-        resultMessage.className = "message error";
-        return;
-      }
+      /* payload expected by n8n */
+      const payload = {
+        action:       'reset',
+        email,        /* pulled from query-string             */
+        token,        /* pulled from query-string             */
+        new_password: pwd.value
+      };
 
       try {
-        const response = await fetch("https://n8n.mq-ai.net/webhook/request-reset", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            action: "reset",
-            email,
-            token,
-            new_password: newPassword
-          })
+        const r = await fetch('https://n8n.mq-ai.net/webhook/request-reset', {
+          method : 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body   : JSON.stringify(payload)
         });
 
-        const result = await response.text();
-
-        if (response.ok && result.toLowerCase().includes("success")) {
-          resultMessage.textContent = "✅ Reset successful.";
-          resultMessage.className = "message success";
+        if (r.ok) {
+          successMsg.style.display = 'block';
+          form.reset();          // optional
         } else {
-          resultMessage.textContent = "❌ Reset failed.";
-          resultMessage.className = "message error";
+          const { message } = await r.json().catch(() => ({}));
+          errorMsg.textContent = message || 'Server error – try again.';
+          errorMsg.style.display = 'block';
         }
       } catch (err) {
-        resultMessage.textContent = "❌ Error: " + err.message;
-        resultMessage.className = "message error";
+        errorMsg.textContent = 'Network error – try again.';
+        errorMsg.style.display = 'block';
       }
-    }
+    });
   </script>
 </body>
 </html>
